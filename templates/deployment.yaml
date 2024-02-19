@@ -1,0 +1,90 @@
+{{- $name := include "xp4dev.name" . -}}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "xp4dev.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "xp4dev.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "xp4dev.selectorLabels" . | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: {{ default 90 .Values.terminationPeriodSeconds }}
+      containers:
+        - name: {{ $name }}
+          image: "{{ .Values.image.repository }}/{{ .Values.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "xp4dev.container-ports" . | nindent 10 }}
+          {{- include "xp4dev.lifecycle" . | nindent 10 }}
+          {{- include "xp4dev.readiness" . | nindent 10 }}
+          {{- include "xp4dev.liveness" . | nindent 10 }}
+          {{- include "xp4dev.resources" . | nindent 10 }}
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CONTAINER_CPU_REQUEST_MILLICORES
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+                  divisor: 1m
+            - name: CONTAINER_MEMORY_LIMIT_KIBIBYTES
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
+                  divisor: 1Ki
+          {{- if gt (len .Values.envs) 0 -}}
+            {{- range .Values.envs }}
+            - name: {{ .name }}
+              value: {{ .value }}
+            {{- end }}
+          {{- end }}
+          {{- if gt (len .Values.configs) 0 -}}
+            {{- range $k, $v := .Values.configs }}
+            - name: {{ $k }}
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $name }}-configmap
+                  key: {{ $k }}
+            {{- end }}
+          {{- end }}
+          {{- if gt (len .Values.secrets) 0 -}}
+            {{- range $secret := .Values.secrets }}
+            - name: {{ $secret }}
+              value: {{ $name }}-akv-{{ $secret }}-inj@azurekeyvault
+            {{- end }}
+          {{- end }}
+          {{- if gt (len .Values.volumes.azureFile) 0 -}}
+          volumeMounts:
+            {{- range $key, $volume := .Values.volumes.azureFile }}
+            - name: {{ $volume.name }}
+              mountPath: {{ $volume.mountPath }}
+            {{- end }}
+          {{- end }}
+      {{- if gt (len .Values.volumes.azureFile) 0 -}}
+      volumes:
+        {{- range $key, $volume := .Values.volumes.azureFile }}
+        - name: {{ $volume.name }}
+          azureFile:
+            secretName: {{ $volume.secretName }}
+            shareName: {{ $volume.shareName }}
+        {{- end }}
+      {{- end }}

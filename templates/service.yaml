@@ -1,0 +1,11 @@
+{{- $name := include "cresol.name" . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "cresol.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "cresol.selectorLabels" . | nindent 4 }}
+  {{- include "cresol.service-ports" . | nindent 2 }}

@@ -1,0 +1,11 @@
+{{- if gt (len .Values.configs) 0 -}}
+{{- $name := include "xp4dev.name" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-configmap
+data:
+  {{- range $k, $v := .Values.configs }}
+  {{ $k }}: {{ $v | quote }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: xp4dev-chart-microservice
+description: Um template de deploy para microservice
+
+# Tipo do Chart: 'application' ou 'library'.
+type: application
+
+# Versão semântica do Chart
+version: 1.0.0
+
+# Versão da aplicação
+appVersion: "1.0.0"
